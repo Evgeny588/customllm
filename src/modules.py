@@ -49,13 +49,15 @@ class MultiheadAttention(nn.Module):
         K = K.transpose(1, 2)
         V = V.transpose(1, 2)
         
-        att_scores = V @ K.transpose(2, 3)
+        att_scores = Q @ K.transpose(2, 3)
         attention_mask = self.mask.bool()[ : num_tokens, : num_tokens]
         att_scores.masked_fill_(attention_mask, -torch.inf)
+        att_scores = torch.softmax(
+            att_scores / self.head_dim ** 0.5, dim = -1 
+        )
+        att_scores = self.dropout(att_scores)
 
-        context_vec = att_scores @ V
-        context_vec = torch.softmax(context_vec / self.head_dim ** 0.5, dim = -1)
-        context_vec = self.dropout(context_vec).transpose(1, 2)
+        context_vec = (att_scores @ V).transpose(1, 2)
         context_vec = self.out_proj(context_vec.contiguous().view(batch_size, num_tokens, emb_size))
         
         return context_vec
