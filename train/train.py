@@ -2,6 +2,7 @@ import torch
 import sys
 import logging
 import torch.nn.functional as F
+
 from pathlib import Path
 from torch import nn
 from tiktoken import get_encoding
@@ -14,7 +15,7 @@ logging.basicConfig(level = logging.INFO)
 from src.modules import GPTModel, small_config
 
 EPOCHS = 5
-DEVICE = 'cpu'                # 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 LR = 1e-4
 tokenizer = get_encoding('gpt2')
 
@@ -47,7 +48,7 @@ def main():
 
 
     dataset = TextDataset(text, 6, tokenizer)
-    loader = DataLoader(
+    train_loader = DataLoader(
         dataset = dataset,
         batch_size = 10,
         shuffle = False
@@ -57,14 +58,14 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr = LR)
 
 
-    epoch_loss, epoch_acc = [], []
-    for epoch in tqdm(range(EPOCHS)):
+    train_epoch_loss, eval_epoch_loss = [], []
+    for epoch in tqdm(range(EPOCHS), desc = 'Epoch cycle'):
         
-        current_loss = 0.0
-        counter_batch = 0
+        train_loss = 0.0
+        counter_train_batch = 0
         model.train()
 
-        for inputs, targets in tqdm(loader):
+        for inputs, targets in tqdm(train_loader, desc = 'Train batch cycle'):
            
             inputs = inputs.to(DEVICE)
             targets = targets.to(DEVICE)
@@ -78,17 +79,40 @@ def main():
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            logging.debug(f'Batch_loss = {loss.item(): .4f}')
+            logging.debug(f'Batch_train_loss = {loss.item(): .4f}')
 
-            counter_batch += 1 
-            current_loss += loss.item()
+            counter_train_batch += 1 
+            train_loss += loss.item()
             
-        loss_on_epoch = current_loss / counter_batch
-        epoch_loss.append(loss_on_epoch)
+        loss_on_epoch = train_loss / counter_train_batch
+        train_epoch_loss.append(loss_on_epoch)
+        logging.info(f'Train loss on {epoch} epoch = {loss_on_epoch: .4f}')
 
-        logging.info(f'Loss on {epoch} epoch = {loss_on_epoch: .4f}')
 
+        model.eval()
+        eval_loss = 0.0
+        counter_eval_batch = 0
 
+        for inputs, target in tqdm(eval_loader, desc = 'Eval batch cycle'):
+
+            inputs = inputs.to(DEVICE)
+            targets = targets.to(DEVICE)
+
+            with torch.no_grad():
+                logits = model(inputs)
+                logits = logits.view(-1, small_config['vocab_size'])
+                targets = targets.view(-1, )
+
+                loss = F.cross_entropy(input= logits, target= targets)
+
+            logging.debug(f'Batch validation loss = {loss.item(): .4f}')
+            
+            counter_eval_batch += 1
+            eval_loss += loss.item()
+        
+        loss_on_epoch = eval_loss / counter_eval_batch
+        eval_epoch_loss.append(loss_on_epoch)
+        logging.info(f'Validation loss on {epoch} epoch = {loss_on_epoch: .4f}')
 
 if __name__ == '__main__':
     main()
