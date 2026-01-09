@@ -5,6 +5,16 @@ import torch.nn as nn
 from pathlib import Path
 
 
+small_config = {
+        'vocab_size': 50257,
+        'context_length': 1024,
+        'emb_dim': 768,
+        'n_heads': 12,
+        'n_layers': 12,
+        'drop_rate': 0.1,
+        'qkv_bias': False
+        }
+
 class MultiheadAttention(nn.Module):
     def __init__(self, d_in, d_out, dropout, num_heads, context_length, qkv_bias = False):
         super().__init__()
