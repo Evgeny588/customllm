@@ -1,20 +1,21 @@
 import torch
 import sys
 import logging
- 
+import torch.nn.functional as F
 from pathlib import Path
 from torch import nn
 from tiktoken import get_encoding
 from torch.utils.data import Dataset, DataLoader
+from tqdm.auto import tqdm
 
 root_path = Path(__file__).resolve().parent.parent
 sys.path.append(str(root_path))
 logging.basicConfig(level = logging.INFO)
 from src.modules import GPTModel, small_config
 
-
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-LR = 1e-3
+EPOCHS = 5
+DEVICE = 'cpu'                # 'cuda' if torch.cuda.is_available() else 'cpu'
+LR = 1e-4
 tokenizer = get_encoding('gpt2')
 
 
@@ -25,7 +26,7 @@ class TextDataset(Dataset):
         self.slice = slice
 
     def __len__(self):
-        return len(self.tokens) - self.window
+        return len(self.tokens) - self.window - self.slice 
     
 
     def __getitem__(self, idx):
@@ -45,19 +46,49 @@ def main():
         text = file.read()
 
 
-    dataset = TextDataset(text, 5, tokenizer)
+    dataset = TextDataset(text, 6, tokenizer)
     loader = DataLoader(
         dataset = dataset,
-        batch_size = 5,
+        batch_size = 10,
         shuffle = False
     )
     
     model = GPTModel(small_config).to(DEVICE)
     optimizer = torch.optim.AdamW(model.parameters(), lr = LR)
-    criterion = # Надо изучить по книге
-    
-    
-    
+
+
+    epoch_loss, epoch_acc = [], []
+    for epoch in tqdm(range(EPOCHS)):
+        
+        current_loss = 0.0
+        counter_batch = 0
+        model.train()
+
+        for inputs, targets in tqdm(loader):
+           
+            inputs = inputs.to(DEVICE)
+            targets = targets.to(DEVICE)
+
+            logits = model(inputs)
+            logits = logits.view(-1, small_config['vocab_size'])
+            targets = targets.view(-1, )
+
+            loss = F.cross_entropy(input= logits, target= targets)
+
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            logging.debug(f'Batch_loss = {loss.item(): .4f}')
+
+            counter_batch += 1 
+            current_loss += loss.item()
+            
+        loss_on_epoch = current_loss / counter_batch
+        epoch_loss.append(loss_on_epoch)
+
+        logging.info(f'Loss on {epoch} epoch = {loss_on_epoch: .4f}')
+
+
 
 if __name__ == '__main__':
     main()
