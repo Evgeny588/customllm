@@ -11,7 +11,7 @@ from torch import nn
 from src.modules import GPTModel
 
 
-config = {
+small_config = {
         'vocab_size': 50257,
         'context_length': 1024,
         'emb_dim': 768,
