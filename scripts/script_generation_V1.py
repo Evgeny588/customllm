@@ -3,23 +3,16 @@ import sys
 import logging
 
 from pathlib import Path
+from warnings import filterwarnings
+filterwarnings('ignore')
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
 from tiktoken import get_encoding
 from torch import nn
-from src.modules import GPTModel
+from src.modules import GPTModel, small_config
 
-
-small_config = {
-        'vocab_size': 50257,
-        'context_length': 1024,
-        'emb_dim': 768,
-        'n_heads': 12,
-        'n_layers': 12,
-        'drop_rate': 0.1,
-        'qkv_bias': False
-        }
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def generation(prompt, configured_model, max_length, tokenizer):
         configured_model.eval()
@@ -37,7 +30,10 @@ def generation(prompt, configured_model, max_length, tokenizer):
         print(tokenizer.decode(tokenized_prompt.squeeze().tolist()))
 
 def main():
-    model = GPTModel(config)
+    model = GPTModel(small_config)
+    weights = torch.load(project_root / 'checkpoints/best_model.pth', map_location = device)['states_dicts']['model']
+
+    model.load_state_dict(weights)
     tokenizer = get_encoding('gpt2')
     prompt = input('Your prompt: ')
     generation(prompt, model, 15, tokenizer)
