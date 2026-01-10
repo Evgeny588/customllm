@@ -23,24 +23,7 @@ tokenizer = get_encoding('gpt2')
 pin_memory = torch.cuda.is_available()
 num_workers = 2 if pin_memory else 0
 
-class TextDataset(Dataset):
-    def __init__(self, text_data, window, tokenizer, slice = 1):
-        self.tokens = tokenizer.encode(text_data) 
-        self.window = window
-        self.slice = slice
 
-    def __len__(self):
-        return len(self.tokens) - self.window - self.slice 
-    
-
-    def __getitem__(self, idx):
-        start_pos = idx
-        end_pos = idx + self.window
-
-        non_sliced = self.tokens[start_pos: end_pos]
-        sliced = self.tokens[start_pos + self.slice: end_pos + self.slice]
-
-        return torch.tensor(non_sliced, dtype = torch.long), torch.tensor(sliced, dtype = torch.long)
     
 
 

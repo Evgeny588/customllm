@@ -38,10 +38,10 @@ def main():
     prompt = input('Your prompt: ')
     generation(prompt, model, 15, tokenizer)
 
-def main_2():
+def main2():
     tokenizer = get_encoding('gpt2')     
     print(tokenizer.decode([0]))
 
 
 if __name__ == '__main__':
-    main()
+    main2()
