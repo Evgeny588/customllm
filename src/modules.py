@@ -176,3 +176,37 @@ class GPTModel(nn.Module):
         return logits
     
 
+
+class EarlyStopping:
+    def __init__(self, delta, num_cycles, mode = 'loss', logging = True):
+        self.delta = delta
+        self.mode = mode
+        self.logging = logging
+        self.num_cycles = num_cycles
+        self.flag = False
+        self.best_value = float('inf') if mode == 'loss' else -float('inf')
+        self.counter = 0
+
+    def __call__(self, metric_or_loss):
+
+        if self.mode == 'loss':
+            if metric_or_loss < self.best_value - self.delta:
+                self.best_value = metric_or_loss
+                self.counter = 0
+            else:
+                self.counter += 1
+        elif self.mode == 'metric':
+            if metric_or_loss > self.best_value + self.delta:
+                self.best_value = metric_or_loss
+                self.counter = 0
+            else:
+                self.counter += 1
+
+        if self.logging:
+            print(f'--------ES counter: {self.counter}/{self.num_cycles}-------')
+
+        if self.counter >= self.num_cycles:
+            print('--------Early stop--------')
+            self.flag = True
+            return True
+        return False
