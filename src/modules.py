@@ -5,6 +5,16 @@ import torch.nn as nn
 from pathlib import Path
 
 
+small_config = {
+        'vocab_size': 50257,
+        'context_length': 1024,
+        'emb_dim': 768,
+        'n_heads': 12,
+        'n_layers': 12,
+        'drop_rate': 0.1,
+        'qkv_bias': False
+        }
+
 class MultiheadAttention(nn.Module):
     def __init__(self, d_in, d_out, dropout, num_heads, context_length, qkv_bias = False):
         super().__init__()
@@ -39,13 +49,15 @@ class MultiheadAttention(nn.Module):
         K = K.transpose(1, 2)
         V = V.transpose(1, 2)
         
-        att_scores = V @ K.transpose(2, 3)
+        att_scores = Q @ K.transpose(2, 3)
         attention_mask = self.mask.bool()[ : num_tokens, : num_tokens]
         att_scores.masked_fill_(attention_mask, -torch.inf)
+        att_scores = torch.softmax(
+            att_scores / self.head_dim ** 0.5, dim = -1 
+        )
+        att_scores = self.dropout(att_scores)
 
-        context_vec = att_scores @ V
-        context_vec = torch.softmax(context_vec / self.head_dim ** 0.5, dim = -1)
-        context_vec = self.dropout(context_vec).transpose(1, 2)
+        context_vec = (att_scores @ V).transpose(1, 2)
         context_vec = self.out_proj(context_vec.contiguous().view(batch_size, num_tokens, emb_size))
         
         return context_vec
@@ -164,3 +176,37 @@ class GPTModel(nn.Module):
         return logits
     
 
+
+class EarlyStopping:
+    def __init__(self, delta, num_cycles, mode = 'loss', logging = True):
+        self.delta = delta
+        self.mode = mode
+        self.logging = logging
+        self.num_cycles = num_cycles
+        self.flag = False
+        self.best_value = float('inf') if mode == 'loss' else -float('inf')
+        self.counter = 0
+
+    def __call__(self, metric_or_loss):
+
+        if self.mode == 'loss':
+            if metric_or_loss < self.best_value - self.delta:
+                self.best_value = metric_or_loss
+                self.counter = 0
+            else:
+                self.counter += 1
+        elif self.mode == 'metric':
+            if metric_or_loss > self.best_value + self.delta:
+                self.best_value = metric_or_loss
+                self.counter = 0
+            else:
+                self.counter += 1
+
+        if self.logging:
+            print(f'--------ES counter: {self.counter}/{self.num_cycles}-------')
+
+        if self.counter >= self.num_cycles:
+            print('--------Early stop--------')
+            self.flag = True
+            return True
+        return False
