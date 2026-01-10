@@ -15,7 +15,7 @@ sys.path.append(str(root_path))
 logging.basicConfig(level = logging.INFO)
 from src.modules import GPTModel, small_config, EarlyStopping
 
-EPOCHS = 5
+EPOCHS = 20
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 16
 LR = 1e-4
@@ -72,7 +72,7 @@ def main():
 
     model = GPTModel(small_config).to(DEVICE)
     optimizer = torch.optim.AdamW(model.parameters(), lr = LR)
-    stopper = EarlyStopping(0.01, 5)
+    stopper = EarlyStopping(0.01, 3)
 
     best_eval_loss = 0.0
     train_epoch_loss, eval_epoch_loss = [], []
