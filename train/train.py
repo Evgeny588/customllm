@@ -79,6 +79,7 @@ def main():
     
     for epoch in tqdm(range(EPOCHS), desc = 'Epoch cycle'):
         
+        logging.info(f'-------------Epoch {epoch}-------------')
         train_loss = 0.0
         counter_train_batch = 0
         model.train()
@@ -111,7 +112,7 @@ def main():
         eval_loss = 0.0
         counter_eval_batch = 0
 
-        for inputs, target in tqdm(eval_loader, desc = 'Eval batch cycle'):
+        for inputs, targets in tqdm(eval_loader, desc = 'Eval batch cycle'):
 
             inputs = inputs.to(DEVICE)
             targets = targets.to(DEVICE)
