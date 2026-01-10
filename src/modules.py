@@ -1,8 +1,13 @@
 import torch 
+import logging
 
 import torch.nn as nn
+import torch.nn.functional as F
 
+from tqdm import tqdm
 from pathlib import Path
+from torch.utils.data import Dataset
+
 
 
 small_config = {
@@ -210,3 +215,107 @@ class EarlyStopping:
             self.flag = True
             return True
         return False
+    
+
+
+class TextDataset(Dataset):
+    def __init__(self, text_data, window, tokenizer, slice = 1):
+        self.tokens = tokenizer.encode(text_data) 
+        self.window = window
+        self.slice = slice
+
+    def __len__(self):
+        return len(self.tokens) - self.window - self.slice 
+    
+
+    def __getitem__(self, idx):
+        start_pos = idx
+        end_pos = idx + self.window
+
+        non_sliced = self.tokens[start_pos: end_pos]
+        sliced = self.tokens[start_pos + self.slice: end_pos + self.slice]
+
+        return torch.tensor(non_sliced, dtype = torch.long), torch.tensor(sliced, dtype = torch.long)
+    
+
+
+class Saver:
+    def __init__(self, model, optimizer, path, patience = 0.01):
+        self.model = model
+        self.path = path
+        self.patience = patience
+        self.optimizer = optimizer
+        self.best_loss = float('inf')
+
+
+    def __call__(self,current_loss, train_loss = None):
+        if current_loss <= self.best_loss - self.patience:
+            torch.save(
+                {'states_dicts': {
+                    'model': self.model.state_dict(),
+                    'optimizer': self.optimizer.state_dict()
+                },
+                 'metrics': {
+                     'train_loss': train_loss,
+                     'val_loss': current_loss
+                 }
+                 }, self.path
+                 
+            )
+
+
+
+def train_cycle(model, optimizer, train_loader, device, vocab_size):
+    model.train()
+    train_batches = 0
+    train_loss = 0.0
+
+    # Train cycle
+    for inputs, targets in tqdm(train_loader, desc = 'Train:', leave = False):
+        inputs = inputs.to(device)
+        targets = targets.to(device)
+
+        # Forward
+        logits = model(inputs)
+        logits = logits.view(-1, vocab_size)
+        targets = targets.view(-1, )
+        loss = F.cross_entropy(
+            input = logits,
+            target = targets
+        )
+        
+        # Backward
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        train_batches += 1
+        train_loss += loss.item() 
+    return train_loss / train_batches
+
+
+def validation_cycle(model, val_loader, device, vocab_size): 
+    model.eval()
+    eval_batches = 0
+    eval_loss = 0.0
+
+    # Validation cycle
+    for inputs, targets in tqdm(val_loader, desc = 'Validation:', leave = False):
+        inputs = inputs.to(device)
+        targets = targets.to(device)
+
+        # Forward
+        with torch.no_grad():
+            logits = model(inputs)
+            logits = logits.view(-1, vocab_size)
+            targets = targets.view(-1, )
+            loss = F.cross_entropy(
+                input = logits,
+                target = targets
+            )
+        
+        eval_batches += 1
+        eval_loss += loss.item()
+    return eval_loss / eval_batches
+
+        

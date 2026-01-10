@@ -13,7 +13,7 @@ from tqdm.auto import tqdm
 root_path = Path(__file__).resolve().parent.parent
 sys.path.append(str(root_path))
 logging.basicConfig(level = logging.INFO)
-from src.modules import GPTModel, small_config
+from src.modules import GPTModel, small_config, TextDataset
 
 EPOCHS = 5
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -23,24 +23,7 @@ tokenizer = get_encoding('gpt2')
 pin_memory = torch.cuda.is_available()
 num_workers = 2 if pin_memory else 0
 
-class TextDataset(Dataset):
-    def __init__(self, text_data, window, tokenizer, slice = 1):
-        self.tokens = tokenizer.encode(text_data) 
-        self.window = window
-        self.slice = slice
 
-    def __len__(self):
-        return len(self.tokens) - self.window - self.slice 
-    
-
-    def __getitem__(self, idx):
-        start_pos = idx
-        end_pos = idx + self.window
-
-        non_sliced = self.tokens[start_pos: end_pos]
-        sliced = self.tokens[start_pos + self.slice: end_pos + self.slice]
-
-        return torch.tensor(non_sliced, dtype = torch.long), torch.tensor(sliced, dtype = torch.long)
     
 
 
@@ -111,7 +94,7 @@ def main():
         eval_loss = 0.0
         counter_eval_batch = 0
 
-        for inputs, target in tqdm(eval_loader, desc = 'Eval batch cycle'):
+        for inputs, targets in tqdm(eval_loader, desc = 'Eval batch cycle'):
 
             inputs = inputs.to(DEVICE)
             targets = targets.to(DEVICE)
