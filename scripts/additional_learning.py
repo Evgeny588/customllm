@@ -2,6 +2,7 @@ import torch
 import logging
 import sys
 import argparse
+import warnings
 
 from torch import nn
 from pathlib import Path
@@ -49,10 +50,17 @@ def parse_args():
         default = 'cpu',
         help = 'Устройство на котором обучается модель (Процессор или видеокарта)'
     )
+    parser.add_argument(
+        '--warnings',
+        type = str,
+        default = 'ignore',
+        help = 'Игнорировать предупреждения или нет (default or ignore)'
+    )
     return parser.parse_args()
 
 
 args = parse_args()
+warnings.filterwarnings(args.warnings)
 
 data_path = Path(root_path / 'data/')
 device = args.device
@@ -105,7 +113,8 @@ def main():
 
 
     # Cycle
-    for epoch in tqdm(range(EPOCHS), desc = f'Epoch:'):
+    for epoch in tqdm(range(EPOCHS), desc = 'Epoch:'):
+        logging.info(f'===============Epoch {epoch}===============')
         train_loss = train_cycle(
             model = model,
             optimizer = optimizer,
