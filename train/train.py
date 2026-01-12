@@ -13,9 +13,9 @@ from tqdm.auto import tqdm
 root_path = Path(__file__).resolve().parent.parent
 sys.path.append(str(root_path))
 logging.basicConfig(level = logging.INFO)
-from src.modules import GPTModel, small_config, TextDataset
+from src.modules import GPTModel, small_config, EarlyStopping
 
-EPOCHS = 5
+EPOCHS = 20
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 16
 LR = 1e-4
@@ -55,6 +55,7 @@ def main():
 
     model = GPTModel(small_config).to(DEVICE)
     optimizer = torch.optim.AdamW(model.parameters(), lr = LR)
+    stopper = EarlyStopping(0.01, 3)
 
     best_eval_loss = 0.0
     train_epoch_loss, eval_epoch_loss = [], []
@@ -62,6 +63,7 @@ def main():
     
     for epoch in tqdm(range(EPOCHS), desc = 'Epoch cycle'):
         
+        logging.info(f'-------------Epoch {epoch}-------------')
         train_loss = 0.0
         counter_train_batch = 0
         model.train()
@@ -115,6 +117,9 @@ def main():
         eval_epoch_loss.append(eval_loss_on_epoch)
         logging.info(f'Validation loss on {epoch} epoch = {eval_loss_on_epoch: .4f}')
 
+        # Stopper
+        if stopper(eval_loss_on_epoch):
+            break
         # Saver
         if eval_loss >= best_eval_loss:
             best_eval_loss = eval_loss
