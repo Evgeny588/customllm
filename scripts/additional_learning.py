@@ -1,6 +1,7 @@
 import torch
 import logging
 import sys
+import argparse
 
 from torch import nn
 from pathlib import Path
@@ -12,15 +13,59 @@ from src.modules import GPTModel, small_config, TextDataset, EarlyStopping
 from src.modules import train_cycle, validation_cycle, Saver
 from torch.utils.data import DataLoader
 
+logging.basicConfig(
+    level = logging.DEBUG
+)
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description = 'Дообучение модели'
+    )
+
+    parser.add_argument(
+        '--epochs',
+        type = int,
+        default = 3,
+        help = 'Количество эпох обучения'
+    )
+
+    parser.add_argument(
+        '--lr',
+        type = float,
+        default = 0.01,
+        help = 'Скорость обучения'
+    )
+
+    parser.add_argument(
+        '--batch_size',
+        type = int,
+        default = 8,
+        help = 'Batch size'
+    )
+
+    parser.add_argument(
+        '--device',
+        type = str,
+        default = 'cpu',
+        help = 'Устройство на котором обучается модель (Процессор или видеокарта)'
+    )
+    return parser.parse_args()
+
+
+args = parse_args()
 
 data_path = Path(root_path / 'data/')
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-EPOCHS = 20
-BATCH_SIZE = 16
-LR = 1e-2
+device = args.device
+EPOCHS = args.epochs
+BATCH_SIZE = args.batch_size
+LR = args.lr
 pin_memory = torch.cuda.is_available()
 num_workers = 2 if pin_memory else 0
 
+logging.info(f'Устройство: {device}')
+logging.debug(f'Epochs: {EPOCHS}')
+logging.debug(f'Batch_size: {BATCH_SIZE}')
+logging.debug(f'Learning rate: {LR}')
 
 def main():
     config = torch.load(root_path / 'checkpoints/best_model.pth')   
