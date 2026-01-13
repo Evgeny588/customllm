@@ -12,8 +12,13 @@ from tqdm.auto import tqdm
 
 root_path = Path(__file__).resolve().parent.parent
 sys.path.append(str(root_path))
-logging.basicConfig(level = logging.INFO)
-from src.modules import GPTModel, small_config, EarlyStopping
+
+from set_logs import setup_logging
+from src.modules import GPTModel, small_config, EarlyStopping, TextDataset
+
+setup_logging()
+logging = logging.getLogger(Path(__file__).stem)
+logging.debug('---------Train script---------')
 
 EPOCHS = 20
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -22,7 +27,6 @@ LR = 1e-4
 tokenizer = get_encoding('gpt2')
 pin_memory = torch.cuda.is_available()
 num_workers = 2 if pin_memory else 0
-
 
     
 

@@ -13,10 +13,13 @@ from tqdm import tqdm
 from src.modules import GPTModel, small_config, TextDataset, EarlyStopping
 from src.modules import train_cycle, validation_cycle, Saver
 from torch.utils.data import DataLoader
+from set_logs import setup_logging
 
-logging.basicConfig(
-    level = logging.DEBUG
-)
+setup_logging()
+logging = logging.getLogger(Path(__file__).stem)
+
+
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
