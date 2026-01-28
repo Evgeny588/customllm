@@ -59,6 +59,13 @@ def parse_args():
         default = 'ignore',
         help = 'Игнорировать предупреждения или нет (default or ignore)'
     )
+    parser.add_argument(
+        '--mode',
+        type = str,
+        default = 'first',
+        help = 'Тип обучения: "first", если первое дообучение, "other", если последующие'
+    )
+    
     return parser.parse_args()
 
 
@@ -79,7 +86,10 @@ logging.debug(f'Batch_size: {BATCH_SIZE}')
 logging.debug(f'Learning rate: {LR}')
 
 def main():
-    config = torch.load(root_path / 'checkpoints/best_model.pth')   
+    if args.mode != 'first':
+        config = torch.load(root_path / 'checkpoints/additional_model.pth')
+    else:
+        config = torch.load(root_path / 'checkpoints/best_model.pth')   
     tokenizer = get_encoding('gpt2')
     early_stop = EarlyStopping(1e-1, 4)
      
@@ -98,8 +108,11 @@ def main():
         train_text = file.read()
     with open(data_path / 'eval.txt') as file:
         eval_text = file.read()
+
     train_dataset = TextDataset(train_text, 10, tokenizer)
     eval_dataset = TextDataset(eval_text, 10, tokenizer)
+    del train_text
+    del eval_text
 
     train_loader = DataLoader(
         dataset = train_dataset,
